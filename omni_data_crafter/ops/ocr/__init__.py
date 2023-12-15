@@ -1,0 +1,1 @@
+from .pp_ocr import PaddlePaddleOCRV4Onnx

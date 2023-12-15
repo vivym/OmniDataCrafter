@@ -1,0 +1,14 @@
+FROM odc-runtime
+
+ARG USER=user
+ARG UID=1000
+ARG GID=1000
+ARG PW=user
+
+RUN groupadd -g ${GID} ${USER} && \
+    useradd -m ${USER} --uid ${UID} --gid ${GID} && \
+    echo "${USER}:${PW}" | chpasswd && \
+    usermod -aG sudo ${USER} && \
+    echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER ${USER}
