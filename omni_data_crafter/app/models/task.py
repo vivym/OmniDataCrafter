@@ -4,19 +4,16 @@ from typing import Optional
 from beanie import Document, Indexed, UpdateResponse, PydanticObjectId
 from pydantic import Field
 
-from ..schemas.task import (
-    CutDetectionTask, CutDetectionTaskCreation, CutDetectionCompletion
-)
+from ..schemas.task import Task, TaskCreation, TaskCompletion
 
 
-class CutDetectionTaskModel(Document):
+class TaskModel(Document):
     video_path: str
 
     fps: float | None = None
     total_frames: int | None = None
     width: int | None = None
     height: int | None = None
-    cuts: list[tuple[int, int]] | None = None
 
     status: Indexed(str) = "pending"
     message: str | None = None
@@ -26,30 +23,23 @@ class CutDetectionTaskModel(Document):
     completed_at: datetime | None = None
 
     @classmethod
-    def from_task_creation_schema(
-        cls,
-        task: CutDetectionTaskCreation,
-    ) -> "CutDetectionTaskModel":
+    def from_task_creation_schema(cls, task: TaskCreation) -> "TaskModel":
         return cls(video_path=task.video_path)
 
     @classmethod
-    async def create_task(
-        cls,
-        task: CutDetectionTaskCreation,
-    ) -> "CutDetectionTaskModel":
+    async def create_task(cls, task: TaskCreation) -> "TaskModel":
         task_doc = cls.from_task_creation_schema(task)
         await task_doc.insert()
         return task_doc
 
-    def to_task_schema(self) -> CutDetectionTask:
-        return CutDetectionTask(
+    def to_task_schema(self) -> Task:
+        return Task(
             id=str(self.id),
             video_path=self.video_path,
             fps=self.fps,
             total_frames=self.total_frames,
             width=self.width,
             height=self.height,
-            cuts=self.cuts,
             status=self.status,
             message=self.message,
             created_at=self.created_at,
@@ -59,14 +49,14 @@ class CutDetectionTaskModel(Document):
         )
 
     @classmethod
-    async def get_by_id(cls, task_id: str | PydanticObjectId) -> Optional["CutDetectionTaskModel"]:
+    async def get_by_id(cls, task_id: str | PydanticObjectId) -> Optional["TaskModel"]:
         if isinstance(task_id, str):
             task_id = PydanticObjectId(task_id)
 
         return await cls.find_one(cls.id == task_id)
 
     @classmethod
-    async def get_pending_task(cls) -> Optional["CutDetectionTaskModel"]:
+    async def get_pending_task(cls) -> Optional["TaskModel"]:
         found_task = (
             await cls.find(cls.status == "pending", cls.to_process_after < datetime.utcnow())
                 .sort(+cls.to_process_after)
@@ -106,7 +96,10 @@ class CutDetectionTaskModel(Document):
     @classmethod
     async def clear_expired_tasks(cls) -> None:
         (
-            await cls.find(cls.status == "processing", cls.processing_at < datetime.utcnow() - timedelta(minutes=15))
+            await cls.find(
+                cls.status == "processing",
+                cls.processing_at < datetime.utcnow() - timedelta(minutes=15),
+            )
                 .set({
                     cls.status: "pending",
                     cls.to_process_after: datetime.utcnow() + timedelta(minutes=5),
@@ -115,7 +108,7 @@ class CutDetectionTaskModel(Document):
         )
 
     @classmethod
-    async def complete(cls, task: CutDetectionCompletion) -> None:
+    async def complete(cls, task: TaskCompletion) -> None:
         if isinstance(task.id, str):
             task_id = PydanticObjectId(task.id)
         else:
@@ -133,6 +126,5 @@ class CutDetectionTaskModel(Document):
                     cls.total_frames: task.total_frames,
                     cls.width: task.width,
                     cls.height: task.height,
-                    cls.cuts: task.cuts,
                 })
         )

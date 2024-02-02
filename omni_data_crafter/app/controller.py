@@ -6,11 +6,9 @@ from fastapi import FastAPI
 
 from .db import init_db
 from .middlewares.correlation import CorrelationMiddleware
-from .models.task import CutDetectionTaskModel
+from .models.task import TaskModel
 from .logging import setup_logging
-from .schemas.task import (
-    CutDetectionTaskResponse, CutDetectionTaskCreation, CutDetectionCompletion
-)
+from .schemas.task import TaskResponse, TaskCreation, TaskCompletion
 from .settings import settings
 
 if TYPE_CHECKING:
@@ -32,19 +30,10 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(CorrelationMiddleware)
 
 
-def get_task_model_by_type(task_type: str) -> type[CutDetectionTaskModel] | None:
-    if task_type == "cut_detection":
-        return CutDetectionTaskModel
-    else:
-        return None
-
-
-@app.post("/task", response_model=CutDetectionTaskResponse)
-async def create_task(task_type: str, token: str, task: CutDetectionTaskCreation):
+@app.post("/task", response_model=TaskResponse)
+async def create_task(token: str, task: TaskCreation):
     if token != settings.worker_token:
         return {"task": None}
-
-    TaskModel = get_task_model_by_type(task_type)
 
     if TaskModel is not None:
         task_doc = await TaskModel.create_task(task)
@@ -58,15 +47,13 @@ async def create_task(task_type: str, token: str, task: CutDetectionTaskCreation
 
     print("task", task)
 
-    return CutDetectionTaskResponse(task=task)
+    return TaskResponse(task=task)
 
 
-@app.get("/task", response_model=CutDetectionTaskResponse)
-async def get_pending_task(task_type: str, token: str):
+@app.get("/task", response_model=TaskResponse)
+async def get_pending_task(token: str):
     if token != settings.worker_token:
         return {"task": None}
-
-    TaskModel = get_task_model_by_type(task_type)
 
     if TaskModel is not None:
         task_doc = await TaskModel.get_pending_task()
@@ -78,15 +65,13 @@ async def get_pending_task(task_type: str, token: str):
     else:
         task = None
 
-    return CutDetectionTaskResponse(task=task)
+    return TaskResponse(task=task)
 
 
 @app.get("/tasks/{task_id}/requeue")
-async def requeue_task(task_type: str, token: str, task_id: str):
+async def requeue_task(token: str, task_id: str):
     if token != settings.worker_token:
         return {"task": None}
-
-    TaskModel = get_task_model_by_type(task_type)
 
     await TaskModel.requeue(task_id)
 
@@ -95,15 +80,12 @@ async def requeue_task(task_type: str, token: str, task_id: str):
 
 @app.put("/tasks/{task_id}")
 async def complete_task(
-    task_type: str,
     token: str,
     task_id: str,
-    task: CutDetectionCompletion,
+    task: TaskCompletion,
 ):
     if token != settings.worker_token or task_id != task.id:
         return {"task": None}
-
-    TaskModel = get_task_model_by_type(task_type)
 
     await TaskModel.complete(task)
 

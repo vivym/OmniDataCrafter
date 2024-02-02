@@ -21,6 +21,8 @@ class VPFVideoDecoder(VideoDecoder):
         self.video_path = video_path
         self.batch_size = batch_size
         self.device_id = device_id
+        self.device_str = f"cuda:{device_id}"
+        self.device = torch.device(self.device_str)
 
         self.nv_demux = nvc.PyFFmpegDemuxer(video_path)
         self.fps = self.nv_demux.Framerate()

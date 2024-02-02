@@ -54,9 +54,10 @@ def surface_to_tensor(surface: nvc.Surface) -> torch.Tensor:
         raise RuntimeError("Can not export to tensor.")
 
     img_tensor.resize_(3, int(surf_plane.Height() / 3), surf_plane.Width())
-    img_tensor = img_tensor.type(dtype=torch.cuda.FloatTensor)
-    img_tensor = torch.divide(img_tensor, 255.0)
-    img_tensor = torch.clamp(img_tensor, 0.0, 1.0)
+    img_tensor = img_tensor.permute(1, 2, 0)
+    # img_tensor = img_tensor.type(dtype=torch.cuda.FloatTensor)
+    # img_tensor = torch.divide(img_tensor, 255.0)
+    # img_tensor = torch.clamp(img_tensor, 0.0, 1.0)
 
     return img_tensor
 

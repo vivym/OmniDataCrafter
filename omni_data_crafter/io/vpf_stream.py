@@ -114,7 +114,7 @@ class VPFStream:
 
 
 class VPFDemuxStream(VPFStream):
-    def decode(self, pixel_format: str = "hsv") -> Generator[torch.Tensor, None, None]:
+    def iter_frames(self, pixel_format: str = "hsv") -> Generator[torch.Tensor, None, None]:
         assert pixel_format in ("rgb", "hsv")
 
         nv_decoder = nvc.PyNvDecoder(self.video_path, self.device_idx)
